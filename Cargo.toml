@@ -1,0 +1,16 @@
+[package]
+name = "rustcertation"
+version = "0.1.0"
+authors = ["kshpin <kirill.shpin@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+structopt = "0.3.23"
+cpal = "0.13.4"
+spectrum-analyzer = "1.2.3"
+ringbuffer = "0.8.2"
+iced = { version = "0.3.0", features = ["canvas", "smol"] }
+iced_graphics = "0.2.0"
+iced_native = "0.4.0"

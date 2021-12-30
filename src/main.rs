@@ -150,7 +150,11 @@ impl Application for App {
             _ => None,
         });
 
-        let ticks = time::every(Duration::from_millis(10)).map(|_| Message::Tick);
+        let ticks = if let AppState::Displaying = self.state {
+            time::every(Duration::from_millis(10)).map(|_| Message::Tick)
+        } else {
+            Subscription::none()
+        };
 
         Subscription::batch(vec![events, ticks])
     }

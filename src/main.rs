@@ -54,10 +54,6 @@ struct SelectMenu<T> {
     options: Vec<(T, button::State)>,
 }
 
-pub enum SelectMenuMessage<'a, T> {
-    Selected(&'a T),
-}
-
 #[derive(Debug, Clone)]
 enum Message {
     Quit,
@@ -127,7 +123,7 @@ impl Application for App {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        subscription::events_with(|event, _status| match event {
+        let events = subscription::events_with(|event, _status| match event {
             iced_native::Event::Keyboard(keyboard_event) => match keyboard_event {
                 keyboard::Event::KeyPressed {
                     key_code: keyboard::KeyCode::W,
@@ -152,9 +148,11 @@ impl Application for App {
                 _ => None,
             },
             _ => None,
-        })
-        //.with(time::every(Duration::from_millis(10)).map(Message::Tick))
-        //.map(|subs| subs.1)
+        });
+
+        let ticks = time::every(Duration::from_millis(10)).map(|_| Message::Tick);
+
+        Subscription::batch(vec![events, ticks])
     }
 
     fn update(

@@ -4,18 +4,18 @@ use iced_graphics::Point;
 
 use crate::Message;
 
-pub struct SpectrumViz {
+pub struct SpectrumViz<'a> {
     _display_content: crate::DisplayContent,
     display_type: crate::DisplayType,
 
-    to_draw: crate::Sides<Vec<f32>>,
+    to_draw: &'a crate::Sides<Vec<f32>>,
 }
 
-impl SpectrumViz {
+impl<'a> SpectrumViz<'a> {
     pub fn new(
         display_content: crate::DisplayContent,
         display_type: crate::DisplayType,
-        to_draw: crate::Sides<Vec<f32>>,
+        to_draw: &'a crate::Sides<Vec<f32>>,
     ) -> Self {
         Self {
             _display_content: display_content,
@@ -26,7 +26,7 @@ impl SpectrumViz {
 }
 
 // Then, we implement the `Program` trait
-impl Program<Message> for SpectrumViz {
+impl<'a> Program<Message> for SpectrumViz<'a> {
     fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
         //println!("{}", bounds.size());
 

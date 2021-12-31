@@ -47,7 +47,7 @@ pub struct Sides<T> {
 
 struct SoundData {
     raw: Sides<Vec<f32>>,
-    freqs: Sides<FrequencySpectrum>,
+    freqs: Sides<Vec<f32>>,
 }
 
 struct SelectMenu<T> {
@@ -206,8 +206,16 @@ impl Application for App {
                         };
 
                         let freqs = Sides {
-                            left: get_freqs(&raw.left, clip.sample_rate),
-                            right: get_freqs(&raw.right, clip.sample_rate),
+                            left: get_freqs(&raw.left, clip.sample_rate)
+                                .data()
+                                .iter()
+                                .map(|(_, v)| v.val())
+                                .collect(),
+                            right: get_freqs(&raw.right, clip.sample_rate)
+                                .data()
+                                .iter()
+                                .map(|(_, v)| v.val())
+                                .collect(),
                         };
 
                         self.sound_data = Some(SoundData { raw, freqs });
@@ -251,15 +259,9 @@ impl Application for App {
 
                 if let Some(SoundData { raw, freqs }) = &self.sound_data {
                     let to_draw = if let DisplayContent::Raw = self.display_content {
-                        Sides {
-                            left: raw.left.clone(),
-                            right: raw.right.clone(),
-                        }
+                        raw
                     } else {
-                        Sides {
-                            left: freqs.left.data().iter().map(|(_, v)| v.val()).collect(),
-                            right: freqs.right.data().iter().map(|(_, v)| v.val()).collect(),
-                        }
+                        freqs
                     };
 
                     Container::new(

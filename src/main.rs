@@ -50,9 +50,9 @@ struct SoundData {
     freqs: Sides<Vec<f32>>,
 }
 
-struct SelectMenu<T> {
+/* struct SelectMenu<T> {
     options: Vec<(T, button::State)>,
-}
+} */
 
 #[derive(Debug, Clone)]
 enum Message {

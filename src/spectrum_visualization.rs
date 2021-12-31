@@ -2,7 +2,7 @@ use iced::canvas::{path, Cursor, Frame, Geometry, Program, Stroke};
 use iced::{Color, Rectangle};
 use iced_graphics::Point;
 
-use palette::{convert::IntoColor, Hue, LabHue, Lch, Srgb};
+use palette::{convert::IntoColor, Hsv, Hue, LabHue, Lch, Srgb};
 
 use crate::Message;
 
@@ -35,7 +35,10 @@ impl<'a> Program<Message> for SpectrumViz<'a> {
         // We prepare a new `Frame`
         let mut frame = Frame::new(bounds.size());
 
-        let red = Lch::new(100f32, 128f32, 0f32);
+        // TODO: play around with colors more
+        // start at green, which is brighter than red, then rotate back to red, which doesn't actually yield back red :/
+        let yellow: Lch = Hsv::new(120f32, 1f32, 1f32).into_color();
+        let red = yellow.shift_hue(LabHue::from_degrees(-120f32));
 
         match self.display_type {
             crate::DisplayType::Lines => {

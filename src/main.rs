@@ -212,17 +212,26 @@ impl Application for App {
                         .expect("frequency spectrum conversion")
                     };
 
-                    let process = |channel| {
-                        to_freqs(channel, clip.sample_rate)
+                    let process = |new_raws, old_freqs| {
+                        to_freqs(new_raws, clip.sample_rate)
                             .data()
                             .iter()
                             .map(|(_, v)| v.val())
+                            .zip(old_freqs)
+                            .map(|(new, old)| new * 0.7 + old * 0.3)
                             .collect()
                     };
 
-                    let freqs = Sides {
-                        left: process(&raw.left),
-                        right: process(&raw.right),
+                    let freqs = if let Some(SoundData { freqs, .. }) = &self.sound_data {
+                        Sides {
+                            left: process(&raw.left, &freqs.left),
+                            right: process(&raw.right, &freqs.right),
+                        }
+                    } else {
+                        Sides {
+                            left: vec![0f32; raw.left.len()],
+                            right: vec![0f32; raw.left.len()],
+                        }
                     };
 
                     self.sound_data = Some(SoundData { raw, freqs });

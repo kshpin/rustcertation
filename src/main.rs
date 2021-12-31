@@ -17,6 +17,9 @@ use spectrum_analyzer::{self, samples_fft_to_spectrum, windows::hann_window, Fre
 mod sound_proxy;
 use sound_proxy::SoundProxy;
 
+mod sound_transformer;
+use sound_transformer::SoundTransformer;
+
 mod spectrum_visualization;
 use spectrum_visualization::SpectrumViz;
 
@@ -59,10 +62,17 @@ enum Message {
     SelectDevice(usize),
     UnselectDevice,
     SwitchDisplayContent,
+    ToggleNormalize,
+    ToggleSmooth,
+    ToggleFlashFlood,
+    ShiftMovingAvgRange(i32),
+    ToggleOffCenter,
     Tick,
 }
 
 struct App {
+    debug: bool,
+
     should_exit: bool,
 
     width: u32,
@@ -78,6 +88,8 @@ struct App {
 
     sound_proxy: SoundProxy,
     sound_data: Option<SoundData>,
+
+    sound_transformer: SoundTransformer,
 }
 
 impl Application for App {
@@ -88,6 +100,8 @@ impl Application for App {
     fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {
         (
             Self {
+                debug: flags.debug,
+
                 should_exit: false,
 
                 width: flags.width,
@@ -103,6 +117,8 @@ impl Application for App {
 
                 sound_proxy: SoundProxy::default(),
                 sound_data: None,
+
+                sound_transformer: SoundTransformer::default(),
             },
             Command::none(),
         )
@@ -129,7 +145,7 @@ impl Application for App {
                 } => Some(Message::Quit),
 
                 keyboard::Event::KeyPressed {
-                    key_code: keyboard::KeyCode::S,
+                    key_code: keyboard::KeyCode::Z,
                     ..
                 } => Some(Message::ScanDevices),
 
@@ -142,6 +158,36 @@ impl Application for App {
                     key_code: keyboard::KeyCode::P,
                     ..
                 } => Some(Message::SwitchDisplayContent),
+
+                keyboard::Event::KeyPressed {
+                    key_code: keyboard::KeyCode::N,
+                    ..
+                } => Some(Message::ToggleNormalize),
+
+                keyboard::Event::KeyPressed {
+                    key_code: keyboard::KeyCode::S,
+                    ..
+                } => Some(Message::ToggleSmooth),
+
+                keyboard::Event::KeyPressed {
+                    key_code: keyboard::KeyCode::F,
+                    ..
+                } => Some(Message::ToggleFlashFlood),
+
+                keyboard::Event::KeyPressed {
+                    key_code: keyboard::KeyCode::Period, // >
+                    ..
+                } => Some(Message::ShiftMovingAvgRange(1)),
+
+                keyboard::Event::KeyPressed {
+                    key_code: keyboard::KeyCode::Comma, // <
+                    ..
+                } => Some(Message::ShiftMovingAvgRange(-1)),
+
+                keyboard::Event::KeyPressed {
+                    key_code: keyboard::KeyCode::O,
+                    ..
+                } => Some(Message::ToggleOffCenter),
 
                 _ => None,
             },
@@ -189,6 +235,11 @@ impl Application for App {
                     }
                 };
             }
+            Message::ToggleNormalize => self.sound_transformer.toggle_norm(),
+            Message::ToggleSmooth => self.sound_transformer.toggle_smooth(),
+            Message::ToggleFlashFlood => self.sound_transformer.toggle_flash_flood(),
+            Message::ShiftMovingAvgRange(val) => self.sound_transformer.shift_moving_avg_range(val),
+            Message::ToggleOffCenter => todo!(), //self.off_center = !self.off_center,
             Message::Tick => match self.state {
                 AppState::SelectingSource => {
                     // don't have to do anything at all
@@ -218,7 +269,10 @@ impl Application for App {
                             .iter()
                             .map(|(_, v)| v.val())
                             .zip(old_freqs)
-                            .map(|(new, old)| new * 0.7 + old * 0.3)
+                            .enumerate()
+                            .map(|(index, (new, old)): (_, (_, &f32))| {
+                                self.sound_transformer.apply(*old, new, index)
+                            })
                             .collect()
                     };
 

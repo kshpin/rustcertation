@@ -2,6 +2,8 @@ use iced::canvas::{path, Cursor, Frame, Geometry, Program, Stroke};
 use iced::{Color, Rectangle};
 use iced_graphics::Point;
 
+use palette::{convert::IntoColor, Hue, LabHue, Lch, Srgb};
+
 use crate::Message;
 
 pub struct SpectrumViz<'a> {
@@ -33,34 +35,39 @@ impl<'a> Program<Message> for SpectrumViz<'a> {
         // We prepare a new `Frame`
         let mut frame = Frame::new(bounds.size());
 
+        let red = Lch::new(100f32, 128f32, 0f32);
+
         match self.display_type {
             crate::DisplayType::Lines => {
                 let middle = frame.width() as f32 / 2f32;
 
                 let both_data = self.to_draw.left.iter().zip(self.to_draw.right.iter());
-
-                let mut path_builder = path::Builder::new();
                 for (index, (left_val, right_val)) in both_data.enumerate() {
                     let y = (frame.height() as i32 - index as i32) as f32;
+                    let color = LabHue::from_degrees(360f32 * index as f32 / frame.height());
 
+                    let mut path_builder = path::Builder::new();
                     path_builder.move_to(Point {
                         x: middle - left_val * middle,
                         y,
                     });
-
                     path_builder.line_to(Point {
                         x: middle + right_val * middle,
                         y,
                     });
+                    let path = path_builder.build();
+
+                    frame.stroke(
+                        &path,
+                        Stroke::default()
+                            .with_color({
+                                let srgb: Srgb = red.shift_hue(color).into_color();
+                                Color::new(srgb.red, srgb.green, srgb.blue, 1f32)
+                            })
+                            .with_width(1f32),
+                    );
                 }
 
-                let path = path_builder.build();
-                frame.stroke(
-                    &path,
-                    Stroke::default()
-                        .with_color(Color::from_rgb8(0, 255, 255))
-                        .with_width(1f32),
-                );
                 vec![frame.into_geometry()]
             }
             crate::DisplayType::Boxes => todo!(),

@@ -1,4 +1,4 @@
-use iced::canvas::{path, Cursor, Frame, Geometry, Program};
+use iced::canvas::{path, Cursor, Frame, Geometry, Program, Stroke};
 use iced::{Color, Rectangle};
 use iced_graphics::Point;
 
@@ -28,6 +28,8 @@ impl SpectrumViz {
 // Then, we implement the `Program` trait
 impl Program<Message> for SpectrumViz {
     fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
+        //println!("{}", bounds.size());
+
         // We prepare a new `Frame`
         let mut frame = Frame::new(bounds.size());
 
@@ -53,7 +55,12 @@ impl Program<Message> for SpectrumViz {
                 }
 
                 let path = path_builder.build();
-                frame.fill(&path, Color::new(0f32, 1f32, 1f32, 1f32));
+                frame.stroke(
+                    &path,
+                    Stroke::default()
+                        .with_color(Color::from_rgb8(0, 255, 255))
+                        .with_width(1f32),
+                );
                 vec![frame.into_geometry()]
             }
             crate::DisplayType::Boxes => todo!(),

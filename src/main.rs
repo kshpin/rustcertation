@@ -12,9 +12,7 @@ use cpal::traits::DeviceTrait;
 
 use ringbuffer::RingBufferExt;
 
-use spectrum_analyzer::{
-    self, samples_fft_to_spectrum, windows::hann_window, FrequencyLimit, FrequencySpectrum,
-};
+use spectrum_analyzer::{self, samples_fft_to_spectrum, windows::hann_window, FrequencyLimit};
 
 mod sound_proxy;
 use sound_proxy::SoundProxy;
@@ -191,37 +189,45 @@ impl Application for App {
                     }
                 };
             }
-            Message::Tick => {
-                match self.state {
-                    AppState::SelectingSource => {
-                        // don't have to do anything at all
-                    }
-                    AppState::Displaying => {
-                        let clip_mutex = self.sound_proxy.get_clip();
-                        let clip = clip_mutex.lock().expect("locked Clip in update");
-
-                        let raw = Sides {
-                            left: clip.left.to_vec(),
-                            right: clip.right.to_vec(),
-                        };
-
-                        let freqs = Sides {
-                            left: get_freqs(&raw.left, clip.sample_rate)
-                                .data()
-                                .iter()
-                                .map(|(_, v)| v.val())
-                                .collect(),
-                            right: get_freqs(&raw.right, clip.sample_rate)
-                                .data()
-                                .iter()
-                                .map(|(_, v)| v.val())
-                                .collect(),
-                        };
-
-                        self.sound_data = Some(SoundData { raw, freqs });
-                    }
+            Message::Tick => match self.state {
+                AppState::SelectingSource => {
+                    // don't have to do anything at all
                 }
-            }
+                AppState::Displaying => {
+                    let clip_mutex = self.sound_proxy.get_clip();
+                    let clip = clip_mutex.lock().expect("locked Clip in update");
+
+                    let raw = Sides {
+                        left: clip.left.to_vec(),
+                        right: clip.right.to_vec(),
+                    };
+
+                    let to_freqs = |data, sample_rate| {
+                        samples_fft_to_spectrum(
+                            &hann_window(data),
+                            sample_rate,
+                            FrequencyLimit::All,
+                            None,
+                        )
+                        .expect("frequency spectrum conversion")
+                    };
+
+                    let process = |channel| {
+                        to_freqs(channel, clip.sample_rate)
+                            .data()
+                            .iter()
+                            .map(|(_, v)| v.val())
+                            .collect()
+                    };
+
+                    let freqs = Sides {
+                        left: process(&raw.left),
+                        right: process(&raw.right),
+                    };
+
+                    self.sound_data = Some(SoundData { raw, freqs });
+                }
+            },
         }
 
         Command::none()
@@ -255,8 +261,6 @@ impl Application for App {
                 Container::new(buttons).into()
             }
             AppState::Displaying => {
-                // draw fourier transforms and such
-
                 if let Some(SoundData { raw, freqs }) = &self.sound_data {
                     let to_draw = if let DisplayContent::Raw = self.display_content {
                         raw
@@ -280,11 +284,6 @@ impl Application for App {
             }
         }
     }
-}
-
-fn get_freqs(data: &[f32], sample_rate: u32) -> FrequencySpectrum {
-    samples_fft_to_spectrum(&hann_window(data), sample_rate, FrequencyLimit::All, None)
-        .expect("frequency spectrum conversion")
 }
 
 #[derive(StructOpt, Debug)]

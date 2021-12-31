@@ -67,8 +67,8 @@ enum Message {
 struct App {
     should_exit: bool,
 
-    _width: u32,
-    _height: u32,
+    width: u32,
+    height: u32,
 
     clear_color: Color,
 
@@ -92,8 +92,8 @@ impl Application for App {
             Self {
                 should_exit: false,
 
-                _width: flags.width,
-                _height: flags.height,
+                width: flags.width,
+                height: flags.height,
 
                 clear_color: Color::from_rgb8(51, 51, 51), // #333333
 
@@ -268,8 +268,8 @@ impl Application for App {
                             self.display_type,
                             to_draw,
                         ))
-                        .width(Length::Fill)
-                        .height(Length::Fill),
+                        .width(Length::Units(self.width as u16))
+                        .height(Length::Units(self.height as u16)),
                     )
                     .into() // seems like the canvas constructor expects something that accepts the same messages
                 } else {
@@ -282,7 +282,7 @@ impl Application for App {
 
 fn get_freqs(data: &[f32], sample_rate: u32) -> FrequencySpectrum {
     samples_fft_to_spectrum(&hann_window(data), sample_rate, FrequencyLimit::All, None)
-        .expect("left spectrum in update")
+        .expect("frequency spectrum conversion")
 }
 
 #[derive(StructOpt, Debug)]

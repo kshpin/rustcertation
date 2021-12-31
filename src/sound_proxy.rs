@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Device, Host, Stream, StreamConfig, SupportedStreamConfigRange};
+use cpal::{Device, Host, SampleRate, Stream, StreamConfig, SupportedStreamConfigRange};
 
 use ringbuffer::{ConstGenericRingBuffer, RingBufferExt};
 
@@ -126,7 +126,8 @@ impl SoundProxy {
             .into_iter()
             .next()
             .expect("config to use in select_device")
-            .with_max_sample_rate()
+            //.with_max_sample_rate()
+            .with_sample_rate(SampleRate(44100))
             .into();
 
         println!("[{}]'s config: {:#?}", device_name, config);

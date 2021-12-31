@@ -133,10 +133,7 @@ impl SoundProxy {
         println!("[{}]'s config: {:#?}", device_name, config);
 
         let clip_clone = self.clip.clone();
-        let mut locked_clip = self
-            .clip
-            .lock()
-            .expect("locked Clip mutex in select_device");
+        let mut locked_clip = self.clip.lock().expect("locked Clip mutex in select_device");
 
         locked_clip.sample_rate = config.sample_rate.0;
 
@@ -159,10 +156,7 @@ impl SoundProxy {
     }
 
     pub fn unselect_device(&self) {
-        self.clip
-            .lock()
-            .expect("locked Clip mutex in unselect_device")
-            .stream = None;
+        self.clip.lock().expect("locked Clip mutex in unselect_device").stream = None;
     }
 }
 

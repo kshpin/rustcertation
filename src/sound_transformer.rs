@@ -79,12 +79,16 @@ impl SoundTransformer {
         self.flash_flood = !self.flash_flood;
     }
 
-    pub fn shift_moving_avg_range(&mut self, val: i32) {
+    pub fn shift_moving_avg_range(&mut self, val: i32, debug: bool) {
         self.set_moving_avg_range(if val < 0 && val.abs() as u32 > self.moving_avg_range {
             0u32
         } else {
             self.moving_avg_range + val as u32
-        })
+        });
+
+        if debug {
+            println!("Moving average range: {}", self.moving_avg_range);
+        }
     }
 
     fn set_moving_avg_range(&mut self, val: u32) {

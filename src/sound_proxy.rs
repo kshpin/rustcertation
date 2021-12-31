@@ -5,19 +5,21 @@ use cpal::{Device, Host, Stream, StreamConfig, SupportedStreamConfigRange};
 
 use ringbuffer::{ConstGenericRingBuffer, RingBufferExt};
 
+const CLIP_CAP: usize = 4096;
+
 pub struct Clip {
     stream: Option<Stream>,
     pub sample_rate: u32,
 
-    pub left: ConstGenericRingBuffer<f32, 2048>,
-    pub right: ConstGenericRingBuffer<f32, 2048>,
+    pub left: ConstGenericRingBuffer<f32, CLIP_CAP>,
+    pub right: ConstGenericRingBuffer<f32, CLIP_CAP>,
 }
 
 impl Default for Clip {
     fn default() -> Clip {
-        let mut left = ConstGenericRingBuffer::<f32, 2048>::new();
+        let mut left = ConstGenericRingBuffer::<f32, CLIP_CAP>::new();
         left.fill_default();
-        let mut right = ConstGenericRingBuffer::<f32, 2048>::new();
+        let mut right = ConstGenericRingBuffer::<f32, CLIP_CAP>::new();
         right.fill_default();
 
         Self {
@@ -33,10 +35,39 @@ impl Default for Clip {
 unsafe impl Send for Clip {}
 unsafe impl Sync for Clip {}
 
+// custom de-interleaving iterator
+struct RawSoundData<'a> {
+    data: &'a [f32],
+    num_channels: usize,
+    pos: usize,
+}
+
+impl<'a> Iterator for RawSoundData<'a> {
+    type Item = f32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.pos >= self.data.len() {
+            None
+        } else {
+            let val = self.data[self.pos];
+            self.pos += self.num_channels;
+            Some(val)
+        }
+    }
+}
+
 impl Clip {
     fn on_data(&mut self, data: &[f32]) {
-        //println!("{}", data[data.len()/2]);
-        self.left.extend(data.to_vec());
+        self.left.extend(RawSoundData {
+            data,
+            num_channels: 2,
+            pos: 0,
+        });
+        self.right.extend(RawSoundData {
+            data,
+            num_channels: 2,
+            pos: 1,
+        });
     }
 }
 

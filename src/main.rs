@@ -1,8 +1,8 @@
 use structopt::StructOpt;
 
 use iced::{
-    button, canvas, executor, keyboard, time, Align, Application, Button, Color, Column, Command, Container, Element,
-    Length, Settings, Subscription, Text,
+    button, canvas, executor, keyboard, time, window, Align, Application, Button, Color, Column, Command, Container,
+    Element, Length, Settings, Subscription, Text,
 };
 use iced_native::subscription;
 
@@ -364,5 +364,17 @@ fn main() -> iced::Result {
         println!("options: {:?}", opt);
     }
 
-    App::run(Settings::with_flags(opt))
+    App::run(Settings {
+        window: window::Settings {
+            size: (opt.width, opt.height),
+            resizable: false,
+            decorations: true,
+            min_size: None,
+            max_size: None,
+            transparent: false,
+            always_on_top: false,
+            icon: None,
+        },
+        ..Settings::with_flags(opt)
+    })
 }

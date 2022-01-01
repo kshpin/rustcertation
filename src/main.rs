@@ -12,7 +12,7 @@ use cpal::traits::DeviceTrait;
 
 use ringbuffer::RingBufferExt;
 
-use spectrum_analyzer::{self, samples_fft_to_spectrum, windows::hann_window, FrequencyLimit};
+use spectrum_analyzer::{self, samples_fft_to_spectrum, windows, FrequencyLimit};
 
 mod sound_proxy;
 use sound_proxy::SoundProxy;
@@ -274,7 +274,7 @@ impl Application for App {
                     };
 
                     let to_freqs = |data, sample_rate| {
-                        samples_fft_to_spectrum(&hann_window(data), sample_rate, FrequencyLimit::All, None)
+                        samples_fft_to_spectrum(&windows::hamming_window(data), sample_rate, FrequencyLimit::All, None)
                             .expect("frequency spectrum conversion")
                     };
 

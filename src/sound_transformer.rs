@@ -39,7 +39,7 @@ impl SoundTransformer {
 
     fn normalize(&self, val: f32, index: f32) -> f32 {
         let power = 0.7f32;
-        let scale = 0.0005f32;
+        let scale = 0.000000000015f32;
         let full_scale = 0.02f32;
 
         if self.norm {

@@ -30,23 +30,23 @@ impl Default for SoundTransformer {
 }
 
 impl SoundTransformer {
-    pub fn apply(&self, old: f32, new: f32, index: usize) -> f32 {
-        let scale = 0.25f32;
+    pub fn apply(&self, old: f32, new: f32, index: f32) -> f32 {
+        let base_scale = 0.25f32;
         let power = 1.5f32;
 
-        self.smoothen(old, self.normalize((scale * new).abs().powf(power), index))
+        self.smoothen(old, self.normalize((base_scale * new).abs().powf(power), index))
     }
 
-    fn normalize(&self, val: f32, index: usize) -> f32 {
+    fn normalize(&self, val: f32, index: f32) -> f32 {
         let power = 0.7f32;
-        let scale = 0.05f32;
+        let scale = 0.0005f32;
         let full_scale = 0.02f32;
 
         if self.norm {
             if self.full_norm {
-                val * (index as f32 + 1f32) * full_scale
+                val * (index + 1f32) * full_scale
             } else {
-                val * (index as f32 + 1f32).powf(power) * scale * self.norm_scale
+                val * (index + 1f32).powf(power) * scale * self.norm_scale
             }
         } else {
             val
@@ -77,6 +77,10 @@ impl SoundTransformer {
 
     pub fn toggle_flash_flood(&mut self) {
         self.flash_flood = !self.flash_flood;
+    }
+
+    pub fn shift_norm_scale(&mut self, factor: f32) {
+        self.norm_scale *= factor;
     }
 
     pub fn shift_moving_avg_range(&mut self, val: i32, debug: bool) {

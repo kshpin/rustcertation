@@ -67,6 +67,8 @@ enum Message {
     ToggleFlashFlood,
     ShiftMovingAvgRange(i32),
     ToggleOffCenter,
+    ScaleUp,
+    ScaleDown,
     Tick,
 }
 
@@ -190,6 +192,16 @@ impl Application for App {
                         ..
                     } => Some(Message::ToggleOffCenter),
 
+                    keyboard::Event::KeyPressed {
+                        key_code: keyboard::KeyCode::Up,
+                        ..
+                    } => Some(Message::ScaleUp),
+
+                    keyboard::Event::KeyPressed {
+                        key_code: keyboard::KeyCode::Down,
+                        ..
+                    } => Some(Message::ScaleDown),
+
                     _ => None,
                 }
             }
@@ -245,6 +257,8 @@ impl Application for App {
             Message::ToggleSmooth => self.sound_transformer.toggle_smooth(),
             Message::ToggleFlashFlood => self.sound_transformer.toggle_flash_flood(),
             Message::ShiftMovingAvgRange(val) => self.sound_transformer.shift_moving_avg_range(val, self.debug),
+            Message::ScaleUp => self.sound_transformer.shift_norm_scale(1.15f32),
+            Message::ScaleDown => self.sound_transformer.shift_norm_scale(1f32 / 1.15f32),
             Message::ToggleOffCenter => todo!(), //self.off_center = !self.off_center,
             Message::Tick => match self.state {
                 AppState::SelectingSource => {
@@ -269,12 +283,12 @@ impl Application for App {
                         to_freqs(new_raws, clip.sample_rate)
                             .data()
                             .iter()
-                            .map(|(_, v)| v.val()) // keep only the important part
+                            //.map(|(_, v)| v.val()) // keep only the important part
                             .zip(old_freqs) // use old value too for smoothing
-                            .enumerate() // normalization uses this?
-                            .map(|(index, (new, old)): (_, (_, &f32))| {
+                            //.enumerate() // normalization uses this?
+                            .map(|((freq, new), old): (&(_, _), &f32)| {
                                 // apply the prettifying transformation
-                                self.sound_transformer.apply(*old, new, index)
+                                self.sound_transformer.apply(*old, new.val(), freq.val())
                             })
                             .collect()
                     };

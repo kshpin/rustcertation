@@ -114,10 +114,10 @@ impl SoundProxy {
         let mut usable_configs: Vec<SupportedStreamConfigRange> = device
             .supported_input_configs()
             .expect("device's supported configs")
-            .map(|config| {
+            /* .map(|config| {
                 println!("{:#?}", config);
                 config
-            })
+            }) */
             .filter(|config| config.channels() <= 2)
             .collect();
         usable_configs.sort_unstable_by_key(|config| -(config.channels() as i16));

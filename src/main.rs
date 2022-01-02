@@ -92,6 +92,8 @@ struct App {
     sound_data: Option<SoundData>,
 
     sound_transformer: SoundTransformer,
+
+    off_center: bool,
 }
 
 impl Application for App {
@@ -121,6 +123,8 @@ impl Application for App {
                 sound_data: None,
 
                 sound_transformer: SoundTransformer::default(),
+
+                off_center: true,
             },
             Command::none(),
         )
@@ -259,7 +263,7 @@ impl Application for App {
             Message::ShiftMovingAvgRange(val) => self.sound_transformer.shift_moving_avg_range(val, self.debug),
             Message::ScaleUp => self.sound_transformer.shift_norm_scale(1.15f32),
             Message::ScaleDown => self.sound_transformer.shift_norm_scale(1f32 / 1.15f32),
-            Message::ToggleOffCenter => todo!(), //self.off_center = !self.off_center,
+            Message::ToggleOffCenter => self.off_center = !self.off_center,
             Message::Tick => match self.state {
                 AppState::SelectingSource => {
                     // don't have to do anything at all
@@ -344,9 +348,14 @@ impl Application for App {
                     };
 
                     Container::new(
-                        canvas::Canvas::new(SpectrumViz::new(self.display_content, self.display_type, to_draw))
-                            .width(Length::Units(self.width as u16))
-                            .height(Length::Units(self.height as u16)),
+                        canvas::Canvas::new(SpectrumViz::new(
+                            self.display_content,
+                            self.display_type,
+                            to_draw,
+                            self.off_center,
+                        ))
+                        .width(Length::Units(self.width as u16))
+                        .height(Length::Units(self.height as u16)),
                     )
                     .into() // seems like the canvas constructor expects something that accepts the same messages
                 } else {

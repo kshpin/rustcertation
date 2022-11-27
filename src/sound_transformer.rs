@@ -34,7 +34,10 @@ impl SoundTransformer {
         let base_scale = 0.25f32;
         let power = 1.5f32;
 
-        self.smoothen(old, self.normalize((base_scale * new).abs().powf(power), index))
+        self.smoothen(
+            old,
+            self.normalize((base_scale * new).abs().powf(power), index),
+        )
     }
 
     fn normalize(&self, val: f32, index: f32) -> f32 {
@@ -84,7 +87,7 @@ impl SoundTransformer {
     }
 
     pub fn shift_moving_avg_range(&mut self, val: i32, debug: bool) {
-        self.set_moving_avg_range(if val < 0 && val.abs() as u32 > self.moving_avg_range {
+        self.set_moving_avg_range(if val < 0 && val.unsigned_abs() > self.moving_avg_range {
             0u32
         } else {
             self.moving_avg_range + val as u32

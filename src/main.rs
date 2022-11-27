@@ -1,8 +1,9 @@
 use structopt::StructOpt;
 
 use iced::{
-    button, canvas, executor, keyboard, time, window, Align, Application, Button, Color, Column, Command, Container,
-    Element, Length, Settings, Subscription, Text,
+    executor, keyboard, time,
+    widget::{button::Button, canvas, container::Container, text::Text, Column},
+    window, Alignment, Application, Command, Element, Length, Settings, Subscription, Theme,
 };
 use iced_native::subscription;
 
@@ -80,10 +81,6 @@ struct App {
     width: u32,
     height: u32,
 
-    clear_color: Color,
-
-    button_states: Vec<button::State>,
-
     state: AppState,
     display_content: DisplayContent,
     display_type: DisplayType,
@@ -100,6 +97,7 @@ impl Application for App {
     type Executor = executor::Default;
     type Message = Message;
     type Flags = Opt;
+    type Theme = Theme;
 
     fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {
         (
@@ -110,10 +108,6 @@ impl Application for App {
 
                 width: flags.width,
                 height: flags.height,
-
-                clear_color: Color::from_rgb8(51, 51, 51), // #333333
-
-                button_states: Vec::new(),
 
                 state: AppState::SelectingSource,
                 display_content: DisplayContent::Processed,
@@ -134,10 +128,6 @@ impl Application for App {
         String::from("Rustcertation (on the rocks)")
     }
 
-    fn background_color(&self) -> Color {
-        self.clear_color
-    }
-
     fn should_exit(&self) -> bool {
         self.should_exit
     }
@@ -148,7 +138,7 @@ impl Application for App {
                 match keyboard_event {
                     keyboard::Event::KeyPressed {
                         key_code: keyboard::KeyCode::W,
-                        modifiers: keyboard::Modifiers { control: true, .. },
+                        modifiers: keyboard::Modifiers::CTRL,
                     } => Some(Message::Quit),
 
                     keyboard::Event::KeyPressed {
@@ -221,7 +211,7 @@ impl Application for App {
         Subscription::batch(vec![events, ticks])
     }
 
-    fn update(&mut self, message: Self::Message, _clipboard: &mut iced::Clipboard) -> iced::Command<Self::Message> {
+    fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         if self.debug {
             if let Message::Tick = message {
                 // don't print for ticks, that would clog the console
@@ -260,7 +250,9 @@ impl Application for App {
             Message::ToggleNormalize => self.sound_transformer.toggle_norm(),
             Message::ToggleSmooth => self.sound_transformer.toggle_smooth(),
             Message::ToggleFlashFlood => self.sound_transformer.toggle_flash_flood(),
-            Message::ShiftMovingAvgRange(val) => self.sound_transformer.shift_moving_avg_range(val, self.debug),
+            Message::ShiftMovingAvgRange(val) => self
+                .sound_transformer
+                .shift_moving_avg_range(val, self.debug),
             Message::ScaleUp => self.sound_transformer.shift_norm_scale(1.15f32),
             Message::ScaleDown => self.sound_transformer.shift_norm_scale(1f32 / 1.15f32),
             Message::ToggleOffCenter => self.off_center = !self.off_center,
@@ -278,8 +270,13 @@ impl Application for App {
                     };
 
                     let to_freqs = |data, sample_rate| {
-                        samples_fft_to_spectrum(&windows::hamming_window(data), sample_rate, FrequencyLimit::All, None)
-                            .expect("frequency spectrum conversion")
+                        samples_fft_to_spectrum(
+                            &windows::hamming_window(data),
+                            sample_rate,
+                            FrequencyLimit::All,
+                            None,
+                        )
+                        .expect("frequency spectrum conversion")
                     };
 
                     // define procedure ahead of time to apply to both left and right
@@ -317,21 +314,16 @@ impl Application for App {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Self::Message> {
-        self.button_states = Vec::new();
-
+    fn view(&self) -> Element<Self::Message> {
         match self.state {
             AppState::SelectingSource => {
                 let devices = self.sound_proxy.get_devices();
-                for _ in 0..devices.len() {
-                    self.button_states.push(button::State::default());
-                }
 
-                let buttons = self.button_states.iter_mut().zip(devices.iter()).enumerate().fold(
-                    Column::new().align_items(Align::Start),
-                    |column, (i, (state, device))| {
+                let buttons = devices.iter().enumerate().fold(
+                    Column::new().align_items(Alignment::Start),
+                    |column, (i, device)| {
                         column.push(
-                            Button::new(state, Text::new(device.name().expect("device name")))
+                            Button::new(Text::new(device.name().expect("device name")))
                                 .on_press(Message::SelectDevice(i)),
                         )
                     },
@@ -397,6 +389,8 @@ fn main() -> iced::Result {
             transparent: false,
             always_on_top: false,
             icon: None,
+            position: window::Position::Centered,
+            visible: true,
         },
         ..Settings::with_flags(opt)
     })

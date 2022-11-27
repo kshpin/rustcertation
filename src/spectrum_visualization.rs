@@ -1,5 +1,5 @@
-use iced::canvas::{path, Cursor, Frame, Geometry, Program, Stroke};
-use iced::{Color, Rectangle};
+use iced::widget::canvas::{path, Cursor, Frame, Geometry, Program, Stroke};
+use iced::{Color, Rectangle, Theme};
 use iced_graphics::Point;
 
 use palette::{convert::IntoColor, Hsv, Hue, Srgb};
@@ -36,7 +36,15 @@ impl<'a> SpectrumViz<'a> {
 
 // Then, we implement the `Program` trait
 impl<'a> Program<Message> for SpectrumViz<'a> {
-    fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
+    type State = u32;
+
+    fn draw(
+        &self,
+        _state: &Self::State,
+        _theme: &Theme,
+        bounds: Rectangle,
+        _cursor: Cursor,
+    ) -> Vec<Geometry> {
         //println!("{}", bounds.size());
 
         // We prepare a new `Frame`
@@ -57,33 +65,47 @@ impl<'a> Program<Message> for SpectrumViz<'a> {
                     let color_shift = RgbHue::from_degrees(360f32 * index as f32 / frame.height());
                     let tip_color = red.shift_hue(color_shift);
 
-                    let avg = if self.off_center { right_val - left_val } else { 0f32 };
+                    let avg = if self.off_center {
+                        right_val - left_val
+                    } else {
+                        0f32
+                    };
 
                     let mut draw_side = |distance| {
                         for i in 0..GRADIENT_GRANULARITY {
                             let mut path_builder = path::Builder::new();
                             path_builder.move_to(Point {
-                                x: center * (1f32 + (avg + distance) * (i as f32 / GRADIENT_GRANULARITY as f32)),
+                                x: center
+                                    * (1f32
+                                        + (avg + distance)
+                                            * (i as f32 / GRADIENT_GRANULARITY as f32)),
                                 y,
                             });
                             path_builder.line_to(Point {
                                 x: center
-                                    * (1f32 + (avg + distance) * ((i as f32 + 1f32) / GRADIENT_GRANULARITY as f32)),
+                                    * (1f32
+                                        + (avg + distance)
+                                            * ((i as f32 + 1f32) / GRADIENT_GRANULARITY as f32)),
                                 y,
                             });
                             let path = path_builder.build();
 
                             let srgb: Srgb = tip_color
-                                .desaturate_fixed((GRADIENT_GRANULARITY - i) as f32 / GRADIENT_GRANULARITY as f32)
+                                .desaturate_fixed(
+                                    (GRADIENT_GRANULARITY - i) as f32 / GRADIENT_GRANULARITY as f32,
+                                )
                                 .into_color();
                             let color = Color::new(srgb.red, srgb.green, srgb.blue, 1f32);
 
-                            frame.stroke(&path, Stroke::default().with_color(color).with_width(1f32));
+                            frame.stroke(
+                                &path,
+                                Stroke::default().with_color(color).with_width(1f32),
+                            );
                         }
                     };
 
-                    let dist_from_middle = (right_val + left_val) / 2f32;
                     if self.off_center {
+                        let dist_from_middle = (right_val + left_val) / 2f32;
                         draw_side(-dist_from_middle);
                         draw_side(dist_from_middle);
                     } else {

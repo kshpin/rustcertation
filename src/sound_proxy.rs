@@ -7,8 +7,8 @@ use ringbuffer::{ConstGenericRingBuffer, RingBufferExt};
 
 const CLIP_CAP: usize = 4096;
 
+#[derive(Clone)]
 pub struct Clip {
-    stream: Option<Stream>,
     pub sample_rate: u32,
 
     pub left: ConstGenericRingBuffer<f32, CLIP_CAP>,
@@ -23,7 +23,6 @@ impl Default for Clip {
         right.fill_default();
 
         Self {
-            stream: None,
             sample_rate: 0,
 
             left,
@@ -56,26 +55,12 @@ impl<'a> Iterator for RawSoundData<'a> {
     }
 }
 
-impl Clip {
-    fn on_data(&mut self, data: &[f32]) {
-        self.left.extend(RawSoundData {
-            data,
-            num_channels: 2,
-            pos: 0,
-        });
-        self.right.extend(RawSoundData {
-            data,
-            num_channels: 2,
-            pos: 1,
-        });
-    }
-}
-
 pub struct SoundProxy {
     _sound_host: Host,
     devices: Vec<Device>,
 
     clip: Arc<Mutex<Clip>>,
+    stream: Option<Stream>,
 }
 
 impl Default for SoundProxy {
@@ -88,6 +73,7 @@ impl Default for SoundProxy {
             devices,
 
             clip: Arc::new(Mutex::new(Clip::default())),
+            stream: None,
         }
     }
 }
@@ -102,11 +88,15 @@ impl SoundProxy {
         &self.devices
     }
 
-    pub fn get_clip(&self) -> Arc<Mutex<Clip>> {
-        self.clip.clone()
+    pub fn get_clip(&self) -> Clip {
+        self.clip
+            .clone()
+            .lock()
+            .expect("locked Clip in get_clip")
+            .clone()
     }
 
-    pub fn select_device(&self, index: usize) {
+    pub fn select_device(&mut self, index: usize) {
         let device = &self.devices[index];
 
         let device_name = device.name().expect("device name in select_device");
@@ -133,7 +123,10 @@ impl SoundProxy {
         println!("[{}]'s config: {:#?}", device_name, config);
 
         let clip_clone = self.clip.clone();
-        let mut locked_clip = self.clip.lock().expect("locked Clip mutex in select_device");
+        let mut locked_clip = self
+            .clip
+            .lock()
+            .expect("locked Clip mutex in select_device");
 
         locked_clip.sample_rate = config.sample_rate.0;
 
@@ -141,10 +134,12 @@ impl SoundProxy {
             .build_input_stream(
                 &config,
                 move |data, _| {
-                    clip_clone
-                        .lock()
-                        .expect("locked Clip mutex in data_callback")
-                        .on_data(data)
+                    on_data(
+                        &mut clip_clone
+                            .lock()
+                            .expect("locked Clip mutex in data_callback"),
+                        data,
+                    )
                 },
                 |error| eprintln!("{}", error),
             )
@@ -152,12 +147,25 @@ impl SoundProxy {
 
         // have to play the stream
         stream.play().expect("playing stream in select_device");
-        locked_clip.stream = Some(stream);
+        self.stream = Some(stream);
     }
 
-    pub fn unselect_device(&self) {
-        self.clip.lock().expect("locked Clip mutex in unselect_device").stream = None;
+    pub fn unselect_device(&mut self) {
+        self.stream = None;
     }
+}
+
+fn on_data(clip: &mut Clip, data: &[f32]) {
+    clip.left.extend(RawSoundData {
+        data,
+        num_channels: 2,
+        pos: 0,
+    });
+    clip.right.extend(RawSoundData {
+        data,
+        num_channels: 2,
+        pos: 1,
+    });
 }
 
 // function instead of method so that it can be reused in the constructor

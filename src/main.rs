@@ -261,8 +261,7 @@ impl Application for App {
                     // don't have to do anything at all
                 }
                 AppState::Displaying => {
-                    let clip_mutex = self.sound_proxy.get_clip();
-                    let clip = clip_mutex.lock().expect("locked Clip in update");
+                    let clip = self.sound_proxy.get_clip();
 
                     let raw = Sides {
                         left: clip.left.to_vec(),
@@ -302,7 +301,7 @@ impl Application for App {
                     } else {
                         Sides {
                             left: vec![0f32; raw.left.len()],
-                            right: vec![0f32; raw.left.len()],
+                            right: vec![0f32; raw.right.len()],
                         }
                     };
 

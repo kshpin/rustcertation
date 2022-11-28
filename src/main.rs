@@ -56,9 +56,9 @@ pub enum AppMessage {
     ToggleSmooth,
     ToggleFlashFlood,
     ShiftMovingAvgRange(i32),
-    ToggleOffCenter,
     ScaleUp,
     ScaleDown,
+    ToggleOffCenter,
     Tick,
 }
 
@@ -91,7 +91,6 @@ impl Application for App {
                     flags.height,
                     ContentType::Processed,
                     DisplayType::Lines,
-                    Sides::<Vec<f32>>::default(),
                     true,
                 ),
                 sound_proxy: SoundProxy::default(),

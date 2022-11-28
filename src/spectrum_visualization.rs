@@ -1,4 +1,5 @@
 use std::iter;
+use std::sync::{Arc, Mutex};
 
 use iced::widget::canvas::{
     gradient::Linear, path, stroke::Style, Canvas, Cursor, Frame, Geometry, LineCap, LineDash,
@@ -37,7 +38,7 @@ pub struct Visualizer {
     content_type: crate::ContentType,
     display_type: crate::DisplayType,
 
-    content: crate::Sides<Vec<f32>>,
+    content: Arc<Mutex<crate::Sides<Vec<f32>>>>,
 
     sound_transformer: SoundTransformer,
 
@@ -50,7 +51,6 @@ impl Visualizer {
         height: u32,
         content_type: crate::ContentType,
         display_type: crate::DisplayType,
-        content: crate::Sides<Vec<f32>>,
         off_center: bool,
     ) -> Self {
         Self {
@@ -58,7 +58,7 @@ impl Visualizer {
             height,
             content_type,
             display_type,
-            content,
+            content: Arc::new(Mutex::new(Sides::<Vec<f32>>::default())),
             sound_transformer: SoundTransformer::default(),
             off_center,
         }
@@ -120,14 +120,21 @@ impl Visualizer {
                         .collect()
                 };
 
-                self.content = if let ContentType::Raw = self.content_type {
+                let old_content_lock = self.content.clone();
+                let mut old_content = old_content_lock
+                    .lock()
+                    .expect("locked content in Visualizer::update");
+
+                let new_content = if let ContentType::Raw = self.content_type {
                     raw
                 } else {
                     Sides {
-                        left: process(&raw.left, &self.content.left),
-                        right: process(&raw.right, &self.content.right),
+                        left: process(&raw.left, &old_content.left),
+                        right: process(&raw.right, &old_content.right),
                     }
                 };
+
+                *old_content = new_content;
             }
         };
     }
@@ -171,11 +178,16 @@ impl Program<AppMessage> for Visualizer {
 
         let mut frame = Frame::new(bounds.size());
 
+        let content_lock = self.content.clone();
+        let content = content_lock
+            .lock()
+            .expect("locked content in (Visualizer as Program<AppMessage>)::draw");
+
         match self.display_type {
             crate::DisplayType::Lines => {
                 let center = frame.width() as f32 / 2f32;
 
-                let both_data = self.content.left.iter().zip(self.content.right.iter());
+                let both_data = content.left.iter().zip(content.right.iter());
                 for (index, (left_val, right_val)) in both_data.enumerate() {
                     let y = (frame.height() as i32 - index as i32) as f32;
                     let color_shift = RgbHue::from_degrees(360f32 * index as f32 / frame.height());

@@ -2,8 +2,8 @@ use structopt::StructOpt;
 
 use iced::{
     executor, keyboard, time,
-    widget::{button::Button, canvas, container::Container, text::Text, Column},
-    window, Alignment, Application, Command, Element, Length, Settings, Subscription, Theme,
+    widget::{button::Button, container::Container, text::Text, Column},
+    window, Alignment, Application, Command, Element, Settings, Subscription, Theme,
 };
 use iced_native::subscription;
 
@@ -58,7 +58,7 @@ struct SoundData {
 } */
 
 #[derive(Debug, Clone)]
-enum Message {
+pub enum Message {
     Quit,
     ScanDevices,
     SelectDevice(usize),
@@ -78,9 +78,6 @@ struct App {
     debug: bool,
 
     should_exit: bool,
-
-    width: u32,
-    height: u32,
 
     state: AppState,
     content_type: ContentType,
@@ -108,13 +105,12 @@ impl Application for App {
 
                 should_exit: false,
 
-                width: flags.width,
-                height: flags.height,
-
                 state: AppState::SelectingSource,
                 content_type: ContentType::Processed,
                 display_type: DisplayType::Lines,
                 visualizer: SpectrumViz::new(
+                    flags.width,
+                    flags.height,
                     ContentType::Processed,
                     DisplayType::Lines,
                     Sides::<Vec<f32>>::default(),
@@ -353,12 +349,7 @@ impl Application for App {
             }
             AppState::Displaying => {
                 if let Some(..) = &self.sound_data {
-                    Container::new(
-                        canvas::Canvas::new(&self.visualizer)
-                            .width(Length::Units(self.width as u16))
-                            .height(Length::Units(self.height as u16)),
-                    )
-                    .into() // seems like the canvas constructor expects something that accepts the same messages
+                    self.visualizer.view()
                 } else {
                     Container::new(Text::new("nothing to draw :/")).into()
                 }

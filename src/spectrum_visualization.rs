@@ -1,5 +1,6 @@
-use iced::widget::canvas::{path, Cursor, Frame, Geometry, Program, Stroke};
-use iced::{Color, Rectangle, Theme};
+use iced::widget::canvas::{path, Canvas, Cursor, Frame, Geometry, Program, Stroke};
+use iced::widget::Container;
+use iced::{Color, Element, Length, Rectangle, Theme};
 use iced_graphics::Point;
 
 use palette::{convert::IntoColor, Hsv, Hue, Srgb};
@@ -10,6 +11,9 @@ use crate::{Message, Sides};
 const GRADIENT_GRANULARITY: u32 = 5;
 
 pub struct SpectrumViz {
+    width: u32,
+    height: u32,
+
     _content_type: crate::ContentType,
     display_type: crate::DisplayType,
 
@@ -20,12 +24,16 @@ pub struct SpectrumViz {
 
 impl SpectrumViz {
     pub fn new(
+        width: u32,
+        height: u32,
         content_type: crate::ContentType,
         display_type: crate::DisplayType,
         content: crate::Sides<Vec<f32>>,
         off_center: bool,
     ) -> Self {
         Self {
+            width,
+            height,
             _content_type: content_type,
             display_type,
             content,
@@ -37,6 +45,15 @@ impl SpectrumViz {
 impl SpectrumViz {
     pub fn update(&mut self, content: Sides<Vec<f32>>) {
         self.content = content;
+    }
+
+    pub fn view(&self) -> Element<Message> {
+        Container::new(
+            Canvas::new(self)
+                .width(Length::Units(self.width as u16))
+                .height(Length::Units(self.height as u16)),
+        )
+        .into()
     }
 }
 

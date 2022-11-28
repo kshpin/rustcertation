@@ -1,9 +1,11 @@
 use structopt::StructOpt;
 
 use iced::{
-    executor, keyboard, time,
-    widget::{button, container::Container, text, Column},
-    window, Alignment, Application, Command, Element, Settings, Subscription, Theme,
+    executor, keyboard,
+    theme::Palette,
+    time,
+    widget::{button, container, text, Column},
+    window, Alignment, Application, Color, Command, Element, Settings, Subscription, Theme,
 };
 use iced_native::subscription;
 
@@ -67,6 +69,8 @@ struct App {
     state: AppState,
     sound_proxy: SoundProxy,
     visualizer: Visualizer,
+
+    palette: Palette,
 }
 
 impl Application for App {
@@ -91,6 +95,14 @@ impl Application for App {
                     true,
                 ),
                 sound_proxy: SoundProxy::default(),
+
+                palette: Palette {
+                    background: Color::from_rgb8(0x33, 0x33, 0x33),
+                    text: Color::from_rgb8(0xff, 0xff, 0xff),
+                    primary: Color::from_rgb8(0xff, 0xff, 0),
+                    success: Color::from_rgb8(0, 0xff, 0),
+                    danger: Color::from_rgb8(0xff, 0, 0),
+                },
             },
             Command::none(),
         )
@@ -98,6 +110,10 @@ impl Application for App {
 
     fn title(&self) -> String {
         String::from("Rustcertation (on the rocks)")
+    }
+
+    fn theme(&self) -> Self::Theme {
+        Theme::custom(self.palette)
     }
 
     fn should_exit(&self) -> bool {
@@ -255,7 +271,7 @@ impl Application for App {
                     },
                 );
 
-                Container::new(buttons).into()
+                container(buttons).into()
             }
             AppState::Displaying => self.visualizer.view(),
         }

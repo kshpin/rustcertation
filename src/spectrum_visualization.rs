@@ -5,38 +5,43 @@ use iced_graphics::Point;
 use palette::{convert::IntoColor, Hsv, Hue, Srgb};
 use palette::{RgbHue, Saturate};
 
-use crate::Message;
+use crate::{Message, Sides};
 
 const GRADIENT_GRANULARITY: u32 = 5;
 
-pub struct SpectrumViz<'a> {
-    _display_content: crate::DisplayContent,
+pub struct SpectrumViz {
+    _content_type: crate::ContentType,
     display_type: crate::DisplayType,
 
-    to_draw: &'a crate::Sides<Vec<f32>>,
+    content: crate::Sides<Vec<f32>>,
 
     off_center: bool,
 }
 
-impl<'a> SpectrumViz<'a> {
+impl SpectrumViz {
     pub fn new(
-        display_content: crate::DisplayContent,
+        content_type: crate::ContentType,
         display_type: crate::DisplayType,
-        to_draw: &'a crate::Sides<Vec<f32>>,
+        content: crate::Sides<Vec<f32>>,
         off_center: bool,
     ) -> Self {
         Self {
-            _display_content: display_content,
+            _content_type: content_type,
             display_type,
-            to_draw,
+            content,
             off_center,
         }
     }
 }
 
-// Then, we implement the `Program` trait
-impl<'a> Program<Message> for SpectrumViz<'a> {
-    type State = u32;
+impl SpectrumViz {
+    pub fn update(&mut self, content: Sides<Vec<f32>>) {
+        self.content = content;
+    }
+}
+
+impl Program<Message> for SpectrumViz {
+    type State = Sides<Vec<f32>>;
 
     fn draw(
         &self,
@@ -59,7 +64,7 @@ impl<'a> Program<Message> for SpectrumViz<'a> {
             crate::DisplayType::Lines => {
                 let center = frame.width() as f32 / 2f32;
 
-                let both_data = self.to_draw.left.iter().zip(self.to_draw.right.iter());
+                let both_data = self.content.left.iter().zip(self.content.right.iter());
                 for (index, (left_val, right_val)) in both_data.enumerate() {
                     let y = (frame.height() as i32 - index as i32) as f32;
                     let color_shift = RgbHue::from_degrees(360f32 * index as f32 / frame.height());

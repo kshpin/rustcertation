@@ -37,11 +37,12 @@ pub enum DisplayType {
 }
 
 #[derive(Clone, Copy)]
-pub enum DisplayContent {
+pub enum ContentType {
     Raw,
     Processed,
 }
 
+#[derive(Default, Clone)]
 pub struct Sides<T> {
     left: T,
     right: T,
@@ -82,8 +83,9 @@ struct App {
     height: u32,
 
     state: AppState,
-    display_content: DisplayContent,
+    content_type: ContentType,
     display_type: DisplayType,
+    visualizer: SpectrumViz,
 
     sound_proxy: SoundProxy,
     sound_data: Option<SoundData>,
@@ -110,8 +112,14 @@ impl Application for App {
                 height: flags.height,
 
                 state: AppState::SelectingSource,
-                display_content: DisplayContent::Processed,
+                content_type: ContentType::Processed,
                 display_type: DisplayType::Lines,
+                visualizer: SpectrumViz::new(
+                    ContentType::Processed,
+                    DisplayType::Lines,
+                    Sides::<Vec<f32>>::default(),
+                    true,
+                ),
 
                 sound_proxy: SoundProxy::default(),
                 sound_data: None,
@@ -236,14 +244,14 @@ impl Application for App {
                 self.sound_proxy.unselect_device();
             }
             Message::SwitchDisplayContent => {
-                self.display_content = match self.display_content {
-                    DisplayContent::Raw => {
+                self.content_type = match self.content_type {
+                    ContentType::Raw => {
                         println!("showing frequencies");
-                        DisplayContent::Processed
+                        ContentType::Processed
                     }
-                    DisplayContent::Processed => {
+                    ContentType::Processed => {
                         println!("showing raw sound");
-                        DisplayContent::Raw
+                        ContentType::Raw
                     }
                 };
             }
@@ -261,6 +269,8 @@ impl Application for App {
                     // don't have to do anything at all
                 }
                 AppState::Displaying => {
+                    // TODO: move all this logic to spectrum_visualization, and just send the tick message over sometimes
+
                     let clip = self.sound_proxy.get_clip();
 
                     let raw = Sides {
@@ -305,7 +315,18 @@ impl Application for App {
                         }
                     };
 
-                    self.sound_data = Some(SoundData { raw, freqs });
+                    self.sound_data = Some(SoundData {
+                        raw: raw.clone(),
+                        freqs: freqs.clone(),
+                    });
+
+                    let to_draw = if let ContentType::Raw = self.content_type {
+                        raw
+                    } else {
+                        freqs
+                    };
+
+                    self.visualizer.update(to_draw);
                 }
             },
         }
@@ -331,22 +352,11 @@ impl Application for App {
                 Container::new(buttons).into()
             }
             AppState::Displaying => {
-                if let Some(SoundData { raw, freqs }) = &self.sound_data {
-                    let to_draw = if let DisplayContent::Raw = self.display_content {
-                        raw
-                    } else {
-                        freqs
-                    };
-
+                if let Some(..) = &self.sound_data {
                     Container::new(
-                        canvas::Canvas::new(SpectrumViz::new(
-                            self.display_content,
-                            self.display_type,
-                            to_draw,
-                            self.off_center,
-                        ))
-                        .width(Length::Units(self.width as u16))
-                        .height(Length::Units(self.height as u16)),
+                        canvas::Canvas::new(&self.visualizer)
+                            .width(Length::Units(self.width as u16))
+                            .height(Length::Units(self.height as u16)),
                     )
                     .into() // seems like the canvas constructor expects something that accepts the same messages
                 } else {

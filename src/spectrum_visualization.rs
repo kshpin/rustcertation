@@ -189,6 +189,10 @@ impl Program<AppMessage> for Visualizer {
 
                 let both_data = content.left.iter().zip(content.right.iter());
                 for (index, (left_val, right_val)) in both_data.enumerate() {
+                    if index as u32 >= self.height {
+                        break;
+                    }
+
                     let y = (frame.height() as i32 - index as i32) as f32;
                     let color_shift = RgbHue::from_degrees(360f32 * index as f32 / frame.height());
                     let tip_color: Srgb = red.shift_hue(color_shift).into_color();

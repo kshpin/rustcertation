@@ -1,3 +1,5 @@
+use std::iter;
+
 use iced::widget::canvas::{path, Canvas, Cursor, Frame, Geometry, Program, Stroke};
 use iced::widget::Container;
 use iced::{Color, Element, Length, Rectangle, Theme};
@@ -5,24 +7,42 @@ use iced_graphics::Point;
 
 use palette::{convert::IntoColor, Hsv, Hue, Srgb};
 use palette::{RgbHue, Saturate};
+use ringbuffer::RingBufferExt;
+use spectrum_analyzer::{samples_fft_to_spectrum, windows, FrequencyLimit};
 
-use crate::{Message, Sides};
+use crate::sound_proxy::Clip;
+use crate::sound_transformer::SoundTransformer;
+use crate::{AppMessage, ContentType, Sides};
 
 const GRADIENT_GRANULARITY: u32 = 5;
 
-pub struct SpectrumViz {
+pub enum VisualizerMessage {
+    SwitchDisplayContent,
+    ToggleNormalize,
+    ToggleSmooth,
+    ToggleFlashFlood,
+    ShiftMovingAvgRange(i32),
+    ScaleUp,
+    ScaleDown,
+    ToggleOffCenter,
+    UpdateContent(Box<Clip>),
+}
+
+pub struct Visualizer {
     width: u32,
     height: u32,
 
-    _content_type: crate::ContentType,
+    content_type: crate::ContentType,
     display_type: crate::DisplayType,
 
     content: crate::Sides<Vec<f32>>,
 
+    sound_transformer: SoundTransformer,
+
     off_center: bool,
 }
 
-impl SpectrumViz {
+impl Visualizer {
     pub fn new(
         width: u32,
         height: u32,
@@ -34,20 +54,83 @@ impl SpectrumViz {
         Self {
             width,
             height,
-            _content_type: content_type,
+            content_type,
             display_type,
             content,
+            sound_transformer: SoundTransformer::default(),
             off_center,
         }
     }
 }
 
-impl SpectrumViz {
-    pub fn update(&mut self, content: Sides<Vec<f32>>) {
-        self.content = content;
+impl Visualizer {
+    pub fn update(&mut self, message: VisualizerMessage) {
+        match message {
+            VisualizerMessage::SwitchDisplayContent => {
+                self.content_type = match self.content_type {
+                    ContentType::Raw => {
+                        println!("showing frequencies");
+                        ContentType::Processed
+                    }
+                    ContentType::Processed => {
+                        println!("showing raw sound");
+                        ContentType::Raw
+                    }
+                };
+            }
+            VisualizerMessage::ToggleNormalize => self.sound_transformer.toggle_norm(),
+            VisualizerMessage::ToggleSmooth => self.sound_transformer.toggle_smooth(),
+            VisualizerMessage::ToggleFlashFlood => self.sound_transformer.toggle_flash_flood(),
+            VisualizerMessage::ShiftMovingAvgRange(val) => {
+                self.sound_transformer.shift_moving_avg_range(val, true) // TODO: make debug actually be dynamic
+            }
+            VisualizerMessage::ScaleUp => self.sound_transformer.shift_norm_scale(1.15f32),
+            VisualizerMessage::ScaleDown => self.sound_transformer.shift_norm_scale(1f32 / 1.15f32),
+            VisualizerMessage::ToggleOffCenter => self.off_center = !self.off_center,
+            VisualizerMessage::UpdateContent(clip) => {
+                let raw = Sides {
+                    left: clip.left.to_vec(),
+                    right: clip.right.to_vec(),
+                };
+
+                let to_freqs = |data, sample_rate| {
+                    samples_fft_to_spectrum(
+                        &windows::hamming_window(data),
+                        sample_rate,
+                        FrequencyLimit::All,
+                        None,
+                    )
+                    .expect("frequency spectrum conversion")
+                };
+
+                // define procedure ahead of time to apply to both left and right
+                let process = |new_raws, old_freqs: &Vec<f32>| {
+                    to_freqs(new_raws, clip.sample_rate)
+                        .data()
+                        .iter()
+                        //.map(|(_, v)| v.val()) // keep only the important part
+                        .zip(old_freqs.iter().chain(iter::repeat(&0f32))) // use old value too for smoothing, and lengthen the iterator if needed
+                        //.enumerate() // normalization uses this?
+                        .map(|((freq, new), old): (&(_, _), &f32)| {
+                            // apply the prettifying transformation
+                            self.sound_transformer.apply(*old, new.val(), freq.val())
+                        })
+                        .collect()
+                };
+
+                self.content = if let ContentType::Raw = self.content_type {
+                    raw
+                } else {
+                    Sides {
+                        left: process(&raw.left, &self.content.left),
+                        right: process(&raw.right, &self.content.right),
+                    }
+                };
+            }
+        };
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<AppMessage> {
         Container::new(
             Canvas::new(self)
                 .width(Length::Units(self.width as u16))
@@ -57,7 +140,7 @@ impl SpectrumViz {
     }
 }
 
-impl Program<Message> for SpectrumViz {
+impl Program<AppMessage> for Visualizer {
     type State = Sides<Vec<f32>>;
 
     fn draw(
